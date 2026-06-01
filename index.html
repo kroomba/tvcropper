@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Cropper</title>
+    <script src="coi-serviceworker.js"></script>
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; }
+        h1 { border-bottom: 2px solid #eaeaea; padding-bottom: 10px; }
+        .card { background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #logs { background: #1e1e1e; color: #00ff00; font-family: monospace; padding: 15px; border-radius: 4px; height: 150px; overflow-y: auto; font-size: 12px; margin-top: 10px; }
+        .download-link { display: block; margin: 10px 0; background: #28a745; color: white; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; font-weight: bold; }
+        .download-link:hover { background: #218838; }
+        #downloadArea { margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <h1>Batch Video Cropper</h1>
+    
+    <div class="card">
+        <label for="videoInput"><strong>Upload High-Quality Video:</strong></label><br><br>
+        <input type="file" id="videoInput" accept="video/mp4,video/x-m4v,video/*">
+        <br>
+        <button id="processBtn">Process Videos</button>
+    </div>
+
+    <div id="statusArea" style="display: none;">
+        <h3>Processing Status</h3>
+        <p id="statusText">Initializing FFmpeg...</p>
+        <div id="logs"></div>
+    </div>
+
+    <div id="downloadArea"></div>
+
+    <script>
+        const { createFFmpeg, fetchFile } = FFmpeg;
+        // Enable logging to see progress
+        const ffmpeg = createFFmpeg({ log: true });
+
+        // Extracted crop data from the provided image (in percentages)
+        const cropData = [
+            { name: "TV1", top: 0.00, left: 0.00, bottom: 0.00, right: 68.07 },
+            { name: "TV2", top: 14.63, left: 27.35, bottom: 44.32, right: 32.49 },
+            { name: "TV3", top: 0.58, left: 61.53, bottom: 70.01, right: 9.69 },
+            { name: "TV4", top: 33.48, left: 69.10, bottom: 0.00, right: 9.65 },
+            { name: "TV5", top: 57.86, left: 33.32, bottom: 4.29, right: 29.38 }
+        ];
+
+        const videoInput = document.getElementById('videoInput');
+        const processBtn = document.getElementById('processBtn');
+        const statusArea = document.getElementById('statusArea');
+        const statusText = document.getElementById('statusText');
+        const logs = document.getElementById('logs');
+        const downloadArea = document.getElementById('downloadArea');
+
+        // Capture FFmpeg logs to display in the UI
+        ffmpeg.setLogger(({ type, message }) => {
+            logs.innerHTML += `<div>[${type}] ${message}</div>`;
+            logs.scrollTop = logs.scrollHeight;
+        });
+
+        processBtn.addEventListener('click', async () => {
+            const file = videoInput.files[0];
+            if (!file) {
+                alert("Please select a video file first.");
+                return;
+            }
+
+            processBtn.disabled = true;
+            statusArea.style.display = 'block';
+            downloadArea.innerHTML = ''; 
+            logs.innerHTML = '';
+
+            try {
+                if (!ffmpeg.isLoaded()) {
+                    statusText.innerText = "Loading FFmpeg engine (this happens once)...";
+                    await ffmpeg.load();
+                }
+
+                // Get original filename without extension
+                const fileName = file.name;
+                const baseName = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+                const ext = fileName.substring(fileName.lastIndexOf('.')) || '.mp4';
+                const inputName = 'input_video' + ext;
+
+                statusText.innerText = "Writing file to browser memory...";
+                ffmpeg.FS('writeFile', inputName, await fetchFile(file));
+
+                for (let i = 0; i < cropData.length; i++) {
+                    const tv = cropData[i];
+                    statusText.innerText = `Processing ${tv.name}... (${i + 1}/${cropData.length})`;
+                    
+                    const outputName = `${baseName}_${tv.name}${ext}`;
+
+                    // Convert percentages to fractional multipliers for FFmpeg logic
+                    // FFmpeg crop filter syntax: crop=w:h:x:y
+                    // w = in_w * (1 - left - right)
+                    // h = in_h * (1 - top - bottom)
+                    // x = in_w * left
+                    // y = in_h * top
+                    const w_factor = (1 - (tv.left / 100) - (tv.right / 100)).toFixed(4);
+                    const h_factor = (1 - (tv.top / 100) - (tv.bottom / 100)).toFixed(4);
+                    const x_factor = (tv.left / 100).toFixed(4);
+                    const y_factor = (tv.top / 100).toFixed(4);
+
+                    const cropFilter = `crop=in_w*${w_factor}:in_h*${h_factor}:in_w*${x_factor}:in_h*${y_factor}`;
+
+                    // Run the FFmpeg command
+                    // -preset ultrafast is used so it doesn't take hours in the browser
+                    // -c:a copy copies the audio stream without re-encoding to save time
+                    await ffmpeg.run('-i', inputName, '-vf', cropFilter, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22', '-c:a', 'copy', outputName);
+
+                    // Retrieve the file from memory
+                    const data = ffmpeg.FS('readFile', outputName);
+                    
+                    // Create a download link
+                    const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
+                    const downloadUrl = URL.createObjectURL(videoBlob);
+                    
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = outputName;
+                    a.className = 'download-link';
+                    a.innerText = `Download ${outputName}`;
+                    downloadArea.appendChild(a);
+
+                    // Free up memory
+                    ffmpeg.FS('unlink', outputName);
+                }
+
+                statusText.innerText = "All versions processed successfully!";
+                
+                // Cleanup input file from memory
+                ffmpeg.FS('unlink', inputName);
+
+            } catch (error) {
+                console.error(error);
+                statusText.innerText = "An error occurred. Check the logs.";
+            } finally {
+                processBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
