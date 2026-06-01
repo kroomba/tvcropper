@@ -3,111 +3,374 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Media Cropper (Video & Image)</title>
+    <title>Chris' TV Cropper Tool</title>
+    <!-- Include the COI Service Worker to enable multithreading in browser -->
     <script src="coi-serviceworker.js"></script>
+    <!-- Include FFmpeg.wasm -->
     <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
     <style>
-        body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; }
-        h1 { border-bottom: 2px solid #eaeaea; padding-bottom: 10px; }
-        .card { background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 15px; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        #logs { background: #1e1e1e; color: #00ff00; font-family: monospace; padding: 15px; border-radius: 4px; height: 150px; overflow-y: auto; font-size: 12px; margin-top: 10px; }
-        .download-link { display: block; margin: 10px 0; background: #28a745; color: white; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; font-weight: bold; }
-        .download-link:hover { background: #218838; }
-        
-        /* Customization Table Styles */
-        details { margin-top: 15px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #ccc; }
-        summary { font-weight: bold; cursor: pointer; user-select: none; }
-        table { width: 100%; margin-top: 15px; border-collapse: collapse; }
-        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
-        input[type="number"] { width: 70px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; }
+        :root {
+            --primary-color: #6366f1;
+            --primary-hover: #4f46e5;
+            --success-color: #10b981;
+            --success-hover: #059669;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --radius: 12px;
+            --transition: all 0.2s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .container {
+            flex: 1;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-top: 8px;
+            font-size: 1.1rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            margin-bottom: 24px;
+        }
+
+        /* Custom File Input */
+        .file-upload-wrapper {
+            margin-bottom: 20px;
+        }
+
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+            border: 2px dashed var(--border-color);
+            border-radius: var(--radius);
+            background-color: #f9fafb;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--text-muted);
+            font-weight: 500;
+            text-align: center;
+        }
+
+        .file-upload-label:hover {
+            border-color: var(--primary-color);
+            background-color: #e0e7ff;
+            color: var(--primary-color);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Customization Accordion */
+        details {
+            background: #f9fafb;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        summary {
+            font-weight: 600;
+            cursor: pointer;
+            padding: 15px;
+            user-select: none;
+            background: #f3f4f6;
+            transition: var(--transition);
+        }
+
+        summary:hover {
+            background: #e5e7eb;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            padding: 0 15px 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            min-width: 500px;
+        }
+
+        th, td {
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        input[type="number"] {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Buttons */
+        button {
+            width: 100%;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.4);
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Logs & Status */
+        #statusArea {
+            display: none;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            margin-bottom: 10px;
+        }
+
+        #statusText {
+            font-weight: 500;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        #logs {
+            background: #111827;
+            color: #34d399;
+            font-family: 'Fira Code', monospace;
+            padding: 15px;
+            border-radius: 8px;
+            height: 180px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* Downloads */
+        #downloadArea {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .download-link {
+            display: block;
+            background: var(--success-color);
+            color: white;
+            text-align: center;
+            padding: 12px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: var(--transition);
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+        }
+
+        .download-link:hover {
+            background: var(--success-hover);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 24px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+            background: var(--card-bg);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
 
-    <h1>Batch Media Cropper</h1>
-    
-    <div class="card">
-        <label for="mediaInput"><strong>Upload Video or Image:</strong></label><br><br>
-        <input type="file" id="mediaInput" accept="video/*, image/*">
+    <div class="container">
+        <header>
+            <h1>The TV Cropper Tool</h1>
+            <p class="subtitle">Batch process videos and images instantly in your browser.</p>
+        </header>
         
-        <details>
-            <summary>Advanced: Customize Crop Percentages</summary>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Output</th>
-                        <th>Crop Top (%)</th>
-                        <th>Crop Left (%)</th>
-                        <th>Crop Bottom (%)</th>
-                        <th>Crop Right (%)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>TV1</strong></td>
-                        <td><input type="number" id="tv1_top" value="0.00" step="0.01"></td>
-                        <td><input type="number" id="tv1_left" value="0.00" step="0.01"></td>
-                        <td><input type="number" id="tv1_bottom" value="0.00" step="0.01"></td>
-                        <td><input type="number" id="tv1_right" value="68.07" step="0.01"></td>
-                    </tr>
-                    <tr>
-                        <td><strong>TV2</strong></td>
-                        <td><input type="number" id="tv2_top" value="14.63" step="0.01"></td>
-                        <td><input type="number" id="tv2_left" value="27.35" step="0.01"></td>
-                        <td><input type="number" id="tv2_bottom" value="44.32" step="0.01"></td>
-                        <td><input type="number" id="tv2_right" value="32.49" step="0.01"></td>
-                    </tr>
-                    <tr>
-                        <td><strong>TV3</strong></td>
-                        <td><input type="number" id="tv3_top" value="0.58" step="0.01"></td>
-                        <td><input type="number" id="tv3_left" value="61.53" step="0.01"></td>
-                        <td><input type="number" id="tv3_bottom" value="70.01" step="0.01"></td>
-                        <td><input type="number" id="tv3_right" value="9.69" step="0.01"></td>
-                    </tr>
-                    <tr>
-                        <td><strong>TV4</strong></td>
-                        <td><input type="number" id="tv4_top" value="33.48" step="0.01"></td>
-                        <td><input type="number" id="tv4_left" value="69.10" step="0.01"></td>
-                        <td><input type="number" id="tv4_bottom" value="0.00" step="0.01"></td>
-                        <td><input type="number" id="tv4_right" value="9.65" step="0.01"></td>
-                    </tr>
-                    <tr>
-                        <td><strong>TV5</strong></td>
-                        <td><input type="number" id="tv5_top" value="57.86" step="0.01"></td>
-                        <td><input type="number" id="tv5_left" value="33.32" step="0.01"></td>
-                        <td><input type="number" id="tv5_bottom" value="4.29" step="0.01"></td>
-                        <td><input type="number" id="tv5_right" value="29.38" step="0.01"></td>
-                    </tr>
-                </tbody>
-            </table>
-        </details>
+        <div class="card">
+            <div class="file-upload-wrapper">
+                <label for="mediaInput" class="file-upload-label" id="dropzoneLabel">
+                    <span id="fileNameDisplay">Click to browse or drop a file here</span>
+                </label>
+                <input type="file" id="mediaInput" accept="video/*, image/*">
+            </div>
+            
+            <details>
+                <summary>Advanced: Customize Crop Percentages</summary>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Output</th>
+                                <th>Crop Top (%)</th>
+                                <th>Crop Left (%)</th>
+                                <th>Crop Bottom (%)</th>
+                                <th>Crop Right (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>TV1</strong></td>
+                                <td><input type="number" id="tv1_top" value="0.00" step="0.01"></td>
+                                <td><input type="number" id="tv1_left" value="0.00" step="0.01"></td>
+                                <td><input type="number" id="tv1_bottom" value="0.00" step="0.01"></td>
+                                <td><input type="number" id="tv1_right" value="68.07" step="0.01"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>TV2</strong></td>
+                                <td><input type="number" id="tv2_top" value="14.63" step="0.01"></td>
+                                <td><input type="number" id="tv2_left" value="27.35" step="0.01"></td>
+                                <td><input type="number" id="tv2_bottom" value="44.32" step="0.01"></td>
+                                <td><input type="number" id="tv2_right" value="32.49" step="0.01"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>TV3</strong></td>
+                                <td><input type="number" id="tv3_top" value="0.58" step="0.01"></td>
+                                <td><input type="number" id="tv3_left" value="61.53" step="0.01"></td>
+                                <td><input type="number" id="tv3_bottom" value="70.01" step="0.01"></td>
+                                <td><input type="number" id="tv3_right" value="9.69" step="0.01"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>TV4</strong></td>
+                                <td><input type="number" id="tv4_top" value="33.48" step="0.01"></td>
+                                <td><input type="number" id="tv4_left" value="69.10" step="0.01"></td>
+                                <td><input type="number" id="tv4_bottom" value="0.00" step="0.01"></td>
+                                <td><input type="number" id="tv4_right" value="9.65" step="0.01"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>TV5</strong></td>
+                                <td><input type="number" id="tv5_top" value="57.86" step="0.01"></td>
+                                <td><input type="number" id="tv5_left" value="33.32" step="0.01"></td>
+                                <td><input type="number" id="tv5_bottom" value="4.29" step="0.01"></td>
+                                <td><input type="number" id="tv5_right" value="29.38" step="0.01"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </details>
 
-        <button id="processBtn">Process File</button>
+            <button id="processBtn">Process Media</button>
+        </div>
+
+        <div id="statusArea" class="card">
+            <h3>Status</h3>
+            <p id="statusText">Initializing...</p>
+            <div id="logs"></div>
+            <div id="downloadArea"></div>
+        </div>
     </div>
 
-    <div id="statusArea" style="display: none;">
-        <h3>Processing Status</h3>
-        <p id="statusText">Initializing FFmpeg...</p>
-        <div id="logs"></div>
-    </div>
-
-    <div id="downloadArea"></div>
+    <footer>
+        2026 Chris Morant
+    </footer>
 
     <script>
         const { createFFmpeg, fetchFile } = FFmpeg;
         const ffmpeg = createFFmpeg({ log: true });
 
         const mediaInput = document.getElementById('mediaInput');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
         const processBtn = document.getElementById('processBtn');
         const statusArea = document.getElementById('statusArea');
         const statusText = document.getElementById('statusText');
         const logs = document.getElementById('logs');
         const downloadArea = document.getElementById('downloadArea');
 
+        // Update file name display when a file is selected
+        mediaInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                fileNameDisplay.innerHTML = `<strong>Selected:</strong> ${e.target.files[0].name}`;
+                fileNameDisplay.style.color = "var(--primary-color)";
+            } else {
+                fileNameDisplay.innerText = "Click to browse or drop a file here";
+                fileNameDisplay.style.color = "var(--text-muted)";
+            }
+        });
+
         ffmpeg.setLogger(({ type, message }) => {
-            logs.innerHTML += `<div>[${type}] ${message}</div>`;
+            logs.innerHTML += `<div><span style="color:#60a5fa">[${type}]</span> ${message}</div>`;
             logs.scrollTop = logs.scrollHeight;
         });
 
@@ -141,9 +404,7 @@
                     await ffmpeg.load();
                 }
 
-                // Identify if file is image or video to determine processing logic
                 const isImage = file.type.startsWith('image/');
-                
                 const fileName = file.name;
                 const baseName = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
                 const ext = fileName.substring(fileName.lastIndexOf('.')) || (isImage ? '.jpg' : '.mp4');
@@ -166,7 +427,6 @@
 
                     const cropFilter = `crop=in_w*${w_factor}:in_h*${h_factor}:in_w*${x_factor}:in_h*${y_factor}`;
 
-                    // If it's an image, run a standard filter. If video, use video/audio codecs.
                     if (isImage) {
                         await ffmpeg.run('-i', inputName, '-vf', cropFilter, outputName);
                     } else {
@@ -175,7 +435,6 @@
 
                     const data = ffmpeg.FS('readFile', outputName);
                     
-                    // Assign correct MIME type for the download Blob
                     const mimeType = isImage ? file.type : 'video/mp4';
                     const blob = new Blob([data.buffer], { type: mimeType });
                     const downloadUrl = URL.createObjectURL(blob);
@@ -191,13 +450,16 @@
                 }
 
                 statusText.innerText = "All versions processed successfully!";
+                statusText.style.color = "var(--success-color)";
                 ffmpeg.FS('unlink', inputName);
 
             } catch (error) {
                 console.error(error);
                 statusText.innerText = "An error occurred. Check the logs.";
+                statusText.style.color = "#ef4444";
             } finally {
                 processBtn.disabled = false;
+                processBtn.innerText = "Process Another File";
             }
         });
     </script>
