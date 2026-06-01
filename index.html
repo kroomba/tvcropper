@@ -3,388 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chris' TV Cropper Tool</title>
+    <title>The TV Cropper Tool</title>
     <!-- Include the COI Service Worker to enable multithreading in browser -->
     <script src="coi-serviceworker.js"></script>
     <!-- Include FFmpeg.wasm -->
     <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
     <style>
-        :root {
-            --primary-color: #6366f1;
-            --primary-hover: #4f46e5;
-            --success-color: #10b981;
-            --success-hover: #059669;
-            --bg-color: #f3f4f6;
-            --card-bg: #ffffff;
-            --text-main: #1f2937;
-            --text-muted: #6b7280;
-            --border-color: #e5e7eb;
-            --radius: 12px;
-            --transition: all 0.2s ease;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
         body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            line-height: 1.5;
+            background-color: #008080; /* Classic Teal Background */
+            color: #000000;
+            font-family: "Comic Sans MS", "Chalkboard SE", sans-serif;
+            margin: 0;
+            padding: 20px;
         }
 
-        .container {
-            flex: 1;
-            width: 100%;
-            max-width: 800px;
+        .main-container {
+            width: 800px;
             margin: 0 auto;
-            padding: 40px 20px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 30px;
+            background-color: #ffffff;
+            border: 4px ridge #c0c0c0;
+            padding: 15px;
         }
 
         h1 {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--text-main);
-            letter-spacing: -0.02em;
-        }
-
-        p.subtitle {
-            color: var(--text-muted);
-            margin-top: 8px;
-            font-size: 1.1rem;
-        }
-
-        .card {
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: var(--radius);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            margin-bottom: 24px;
-        }
-
-        /* Custom File Input */
-        .file-upload-wrapper {
-            margin-bottom: 20px;
-        }
-
-        .file-upload-label {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 20px;
-            border: 2px dashed var(--border-color);
-            border-radius: var(--radius);
-            background-color: #f9fafb;
-            cursor: pointer;
-            transition: var(--transition);
-            color: var(--text-muted);
-            font-weight: 500;
+            color: #ff0000;
             text-align: center;
+            text-decoration: underline;
+            font-size: 36px;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px #c0c0c0;
         }
 
-        .file-upload-label:hover {
-            border-color: var(--primary-color);
-            background-color: #e0e7ff;
-            color: var(--primary-color);
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        /* Customization Accordion */
-        details {
-            background: #f9fafb;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
+        .marquee-box {
+            background-color: #ffff00;
+            border: 2px solid #000000;
+            color: #000000;
+            font-weight: bold;
+            font-family: "Courier New", Courier, monospace;
+            padding: 3px;
             margin-bottom: 20px;
-            overflow: hidden;
         }
 
-        summary {
-            font-weight: 600;
-            cursor: pointer;
+        .panel {
+            background-color: #c0c0c0;
+            border: 3px outset #ffffff;
             padding: 15px;
-            user-select: none;
-            background: #f3f4f6;
-            transition: var(--transition);
+            margin-bottom: 20px;
         }
 
-        summary:hover {
-            background: #e5e7eb;
+        .panel-title {
+            background-color: #000080;
+            color: #ffffff;
+            font-weight: bold;
+            font-family: "Trebuchet MS", Arial, sans-serif;
+            padding: 3px 8px;
+            margin: -15px -15px 15px -15px;
+            border-bottom: 2px solid #000000;
         }
 
-        .table-responsive {
-            overflow-x: auto;
-            padding: 0 15px 15px;
+        hr {
+            border: 0;
+            border-top: 2px dashed #ff0000;
+            margin: 20px 0;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 10px;
-            min-width: 500px;
+            background-color: #ffffff;
+            border: 2px solid #000000;
+            font-family: "Times New Roman", Times, serif;
         }
 
         th, td {
-            padding: 12px 8px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 0.9rem;
+            border: 1px solid #000000;
+            padding: 5px;
+            text-align: center;
         }
 
         th {
-            font-weight: 600;
-            color: var(--text-muted);
+            background-color: #0000ff;
+            color: #ffffff;
         }
 
         input[type="number"] {
-            width: 80px;
-            padding: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 0.9rem;
-            transition: var(--transition);
+            width: 60px;
+            border: 2px inset #c0c0c0;
+            background-color: #ffffff;
         }
 
-        input[type="number"]:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-        }
-
-        /* Buttons */
-        button {
+        input[type="file"] {
+            background-color: #ffffff;
+            border: 2px inset #c0c0c0;
             width: 100%;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 14px 20px;
-            font-size: 1rem;
-            font-weight: 600;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.4);
+            padding: 5px;
+            margin-bottom: 15px;
         }
 
-        button:hover {
-            background: var(--primary-hover);
+        button {
+            background-color: #c0c0c0;
+            border: 3px outset #ffffff;
+            padding: 8px 20px;
+            font-weight: bold;
+            font-family: "MS Sans Serif", Geneva, sans-serif;
+            cursor: pointer;
+            color: #000000;
+        }
+
+        button:active {
+            border-style: inset;
         }
 
         button:disabled {
-            background: #9ca3af;
+            color: #808080;
             cursor: not-allowed;
-            box-shadow: none;
         }
 
-        /* Logs & Status */
         #statusArea {
             display: none;
-            animation: fadeIn 0.3s ease-in-out;
         }
 
-        h3 {
-            font-size: 1.25rem;
-            margin-bottom: 10px;
+        .blink-text {
+            color: #ff00ff;
+            font-weight: bold;
+            animation: blinker 1s linear infinite;
         }
 
-        #statusText {
-            font-weight: 500;
-            color: var(--primary-color);
-            margin-bottom: 10px;
+        @keyframes blinker {
+            50% { opacity: 0; }
         }
 
         #logs {
-            background: #111827;
-            color: #34d399;
-            font-family: 'Fira Code', monospace;
-            padding: 15px;
-            border-radius: 8px;
-            height: 180px;
-            overflow-y: auto;
-            font-size: 0.85rem;
-            line-height: 1.4;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
-        }
-
-        /* Downloads */
-        #downloadArea {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-top: 20px;
+            background-color: #000000;
+            color: #00ff00; /* Hacker Green */
+            font-family: "Courier New", Courier, monospace;
+            height: 150px;
+            overflow-y: scroll;
+            border: 3px inset #c0c0c0;
+            padding: 5px;
+            font-size: 12px;
+            margin-top: 10px;
         }
 
         .download-link {
             display: block;
-            background: var(--success-color);
-            color: white;
             text-align: center;
-            padding: 12px;
+            background-color: #0000ff;
+            color: #ffffff;
             text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: var(--transition);
-            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            padding: 8px;
+            margin: 5px 0;
+            border: 3px outset #c0c0c0;
         }
 
-        .download-link:hover {
-            background: var(--success-hover);
+        .download-link:active {
+            border-style: inset;
+            background-color: #000080;
         }
 
-        /* Footer */
+        .hit-counter {
+            font-family: "Courier New", Courier, monospace;
+            font-size: 24px;
+            font-weight: bold;
+            background-color: #000000;
+            color: #ff0000;
+            display: inline-block;
+            padding: 2px 8px;
+            border: 3px inset #c0c0c0;
+            letter-spacing: 3px;
+        }
+
         footer {
             text-align: center;
-            padding: 24px;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            border-top: 1px solid var(--border-color);
-            background: var(--card-bg);
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            margin-top: 20px;
+            font-family: "Times New Roman", Times, serif;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <header>
-            <h1>The TV Cropper Tool</h1>
-            <p class="subtitle">Batch process videos and images instantly in your browser.</p>
-        </header>
+    <div class="main-container">
         
-        <div class="card">
-            <div class="file-upload-wrapper">
-                <label for="mediaInput" class="file-upload-label" id="dropzoneLabel">
-                    <span id="fileNameDisplay">Click to browse or drop a file here</span>
-                </label>
-                <input type="file" id="mediaInput" accept="video/*, image/*">
-            </div>
+        <h1>~* The TV Cropper Tool *~</h1>
+        
+        <div class="marquee-box">
+            <marquee scrollamount="5">Welcome to The TV Cropper Tool! Best viewed in Netscape Navigator 4.0 or Internet Explorer 5! Now with multimedia support! 📺✨</marquee>
+        </div>
+
+        <center><img src="https://media.giphy.com/media/26vUSsA7qFftHCEru/giphy.gif" alt="Under Construction Line" height="15" width="400" style="margin-bottom: 15px; display: none;" onerror="this.style.display='none'"></center>
+
+        <div class="panel">
+            <div class="panel-title">Step 1: Upload Media File</div>
+            <b>Select a Video or Image:</b><br><br>
+            <input type="file" id="mediaInput" accept="video/*, image/*">
             
             <details>
-                <summary>Advanced: Customize Crop Percentages</summary>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Output</th>
-                                <th>Crop Top (%)</th>
-                                <th>Crop Left (%)</th>
-                                <th>Crop Bottom (%)</th>
-                                <th>Crop Right (%)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><strong>TV1</strong></td>
-                                <td><input type="number" id="tv1_top" value="0.00" step="0.01"></td>
-                                <td><input type="number" id="tv1_left" value="0.00" step="0.01"></td>
-                                <td><input type="number" id="tv1_bottom" value="0.00" step="0.01"></td>
-                                <td><input type="number" id="tv1_right" value="68.07" step="0.01"></td>
-                            </tr>
-                            <tr>
-                                <td><strong>TV2</strong></td>
-                                <td><input type="number" id="tv2_top" value="14.63" step="0.01"></td>
-                                <td><input type="number" id="tv2_left" value="27.35" step="0.01"></td>
-                                <td><input type="number" id="tv2_bottom" value="44.32" step="0.01"></td>
-                                <td><input type="number" id="tv2_right" value="32.49" step="0.01"></td>
-                            </tr>
-                            <tr>
-                                <td><strong>TV3</strong></td>
-                                <td><input type="number" id="tv3_top" value="0.58" step="0.01"></td>
-                                <td><input type="number" id="tv3_left" value="61.53" step="0.01"></td>
-                                <td><input type="number" id="tv3_bottom" value="70.01" step="0.01"></td>
-                                <td><input type="number" id="tv3_right" value="9.69" step="0.01"></td>
-                            </tr>
-                            <tr>
-                                <td><strong>TV4</strong></td>
-                                <td><input type="number" id="tv4_top" value="33.48" step="0.01"></td>
-                                <td><input type="number" id="tv4_left" value="69.10" step="0.01"></td>
-                                <td><input type="number" id="tv4_bottom" value="0.00" step="0.01"></td>
-                                <td><input type="number" id="tv4_right" value="9.65" step="0.01"></td>
-                            </tr>
-                            <tr>
-                                <td><strong>TV5</strong></td>
-                                <td><input type="number" id="tv5_top" value="57.86" step="0.01"></td>
-                                <td><input type="number" id="tv5_left" value="33.32" step="0.01"></td>
-                                <td><input type="number" id="tv5_bottom" value="4.29" step="0.01"></td>
-                                <td><input type="number" id="tv5_right" value="29.38" step="0.01"></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <summary><b>[+] Advanced Settings (Click to expand)</b></summary>
+                <br>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Output Name</th>
+                            <th>Crop Top (%)</th>
+                            <th>Crop Left (%)</th>
+                            <th>Crop Bottom (%)</th>
+                            <th>Crop Right (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><b>TV1</b></td>
+                            <td><input type="number" id="tv1_top" value="0.00" step="0.01"></td>
+                            <td><input type="number" id="tv1_left" value="0.00" step="0.01"></td>
+                            <td><input type="number" id="tv1_bottom" value="0.00" step="0.01"></td>
+                            <td><input type="number" id="tv1_right" value="68.07" step="0.01"></td>
+                        </tr>
+                        <tr>
+                            <td><b>TV2</b></td>
+                            <td><input type="number" id="tv2_top" value="14.63" step="0.01"></td>
+                            <td><input type="number" id="tv2_left" value="27.35" step="0.01"></td>
+                            <td><input type="number" id="tv2_bottom" value="44.32" step="0.01"></td>
+                            <td><input type="number" id="tv2_right" value="32.49" step="0.01"></td>
+                        </tr>
+                        <tr>
+                            <td><b>TV3</b></td>
+                            <td><input type="number" id="tv3_top" value="0.58" step="0.01"></td>
+                            <td><input type="number" id="tv3_left" value="61.53" step="0.01"></td>
+                            <td><input type="number" id="tv3_bottom" value="70.01" step="0.01"></td>
+                            <td><input type="number" id="tv3_right" value="9.69" step="0.01"></td>
+                        </tr>
+                        <tr>
+                            <td><b>TV4</b></td>
+                            <td><input type="number" id="tv4_top" value="33.48" step="0.01"></td>
+                            <td><input type="number" id="tv4_left" value="69.10" step="0.01"></td>
+                            <td><input type="number" id="tv4_bottom" value="0.00" step="0.01"></td>
+                            <td><input type="number" id="tv4_right" value="9.65" step="0.01"></td>
+                        </tr>
+                        <tr>
+                            <td><b>TV5</b></td>
+                            <td><input type="number" id="tv5_top" value="57.86" step="0.01"></td>
+                            <td><input type="number" id="tv5_left" value="33.32" step="0.01"></td>
+                            <td><input type="number" id="tv5_bottom" value="4.29" step="0.01"></td>
+                            <td><input type="number" id="tv5_right" value="29.38" step="0.01"></td>
+                        </tr>
+                    </tbody>
+                </table>
             </details>
-
-            <button id="processBtn">Process Media</button>
+            <br>
+            <center>
+                <button id="processBtn">>>> PROCESS MEDIA NOW <<<</button>
+            </center>
         </div>
 
-        <div id="statusArea" class="card">
-            <h3>Status</h3>
-            <p id="statusText">Initializing...</p>
+        <div id="statusArea" class="panel">
+            <div class="panel-title">System Status</div>
+            <p id="statusText" class="blink-text">Initializing FFmpeg Engine...</p>
             <div id="logs"></div>
+            <br>
             <div id="downloadArea"></div>
         </div>
-    </div>
 
-    <footer>
-        2026 Chris Morant
-    </footer>
+        <hr>
+
+        <center>
+            <p><i>You are visitor number:</i></p>
+            <div class="hit-counter">001337</div>
+        </center>
+
+        <footer>
+            <p>&copy; 2026 Chris Morant. All rights reserved.</p>
+        </footer>
+    </div>
 
     <script>
         const { createFFmpeg, fetchFile } = FFmpeg;
         const ffmpeg = createFFmpeg({ log: true });
 
         const mediaInput = document.getElementById('mediaInput');
-        const fileNameDisplay = document.getElementById('fileNameDisplay');
         const processBtn = document.getElementById('processBtn');
         const statusArea = document.getElementById('statusArea');
         const statusText = document.getElementById('statusText');
         const logs = document.getElementById('logs');
         const downloadArea = document.getElementById('downloadArea');
 
-        // Update file name display when a file is selected
-        mediaInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                fileNameDisplay.innerHTML = `<strong>Selected:</strong> ${e.target.files[0].name}`;
-                fileNameDisplay.style.color = "var(--primary-color)";
-            } else {
-                fileNameDisplay.innerText = "Click to browse or drop a file here";
-                fileNameDisplay.style.color = "var(--text-muted)";
-            }
-        });
-
         ffmpeg.setLogger(({ type, message }) => {
-            logs.innerHTML += `<div><span style="color:#60a5fa">[${type}]</span> ${message}</div>`;
+            logs.innerHTML += `<div>[${type}] ${message}</div>`;
             logs.scrollTop = logs.scrollHeight;
         });
 
-        // Helper function to safely get input values
         const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
 
         processBtn.addEventListener('click', async () => {
             const file = mediaInput.files[0];
             if (!file) {
-                alert("Please select a file first.");
+                alert("ERROR: Please select a file to upload first!");
                 return;
             }
 
-            // Dynamically build the crop settings array from the UI inputs
             const cropData = [
                 { name: "TV1", top: getVal('tv1_top'), left: getVal('tv1_left'), bottom: getVal('tv1_bottom'), right: getVal('tv1_right') },
                 { name: "TV2", top: getVal('tv2_top'), left: getVal('tv2_left'), bottom: getVal('tv2_bottom'), right: getVal('tv2_right') },
@@ -400,7 +318,7 @@
 
             try {
                 if (!ffmpeg.isLoaded()) {
-                    statusText.innerText = "Loading FFmpeg engine (this happens once)...";
+                    statusText.innerText = "Loading FFmpeg Engine (Please Wait...)";
                     await ffmpeg.load();
                 }
 
@@ -410,7 +328,7 @@
                 const ext = fileName.substring(fileName.lastIndexOf('.')) || (isImage ? '.jpg' : '.mp4');
                 const inputName = 'input_media' + ext;
 
-                statusText.innerText = "Writing file to browser memory...";
+                statusText.innerText = "Uploading to RAM...";
                 ffmpeg.FS('writeFile', inputName, await fetchFile(file));
 
                 for (let i = 0; i < cropData.length; i++) {
@@ -419,7 +337,6 @@
                     
                     const outputName = `${baseName}_${tv.name}${ext}`;
 
-                    // Calculate crop multipliers
                     const w_factor = (1 - (tv.left / 100) - (tv.right / 100)).toFixed(4);
                     const h_factor = (1 - (tv.top / 100) - (tv.bottom / 100)).toFixed(4);
                     const x_factor = (tv.left / 100).toFixed(4);
@@ -443,23 +360,24 @@
                     a.href = downloadUrl;
                     a.download = outputName;
                     a.className = 'download-link';
-                    a.innerText = `Download ${outputName}`;
+                    a.innerText = `> Click Here To Download ${outputName} <`;
                     downloadArea.appendChild(a);
 
                     ffmpeg.FS('unlink', outputName);
                 }
 
-                statusText.innerText = "All versions processed successfully!";
-                statusText.style.color = "var(--success-color)";
+                statusText.innerText = "DONE! All versions processed successfully!";
+                statusText.style.color = "#0000ff";
+                statusText.classList.remove('blink-text');
                 ffmpeg.FS('unlink', inputName);
 
             } catch (error) {
                 console.error(error);
-                statusText.innerText = "An error occurred. Check the logs.";
-                statusText.style.color = "#ef4444";
+                statusText.innerText = "FATAL ERROR. Check logs.";
+                statusText.style.color = "#ff0000";
             } finally {
                 processBtn.disabled = false;
-                processBtn.innerText = "Process Another File";
+                processBtn.innerText = ">>> PROCESS ANOTHER FILE <<<";
             }
         });
     </script>
