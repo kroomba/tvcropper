@@ -3,30 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Cropper</title>
+    <title>Media Cropper (Video & Image)</title>
     <script src="coi-serviceworker.js"></script>
     <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
     <style>
         body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; }
         h1 { border-bottom: 2px solid #eaeaea; padding-bottom: 10px; }
         .card { background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; margin-top: 15px; }
         button:disabled { background: #ccc; cursor: not-allowed; }
         #logs { background: #1e1e1e; color: #00ff00; font-family: monospace; padding: 15px; border-radius: 4px; height: 150px; overflow-y: auto; font-size: 12px; margin-top: 10px; }
         .download-link { display: block; margin: 10px 0; background: #28a745; color: white; text-align: center; padding: 10px; text-decoration: none; border-radius: 4px; font-weight: bold; }
         .download-link:hover { background: #218838; }
-        #downloadArea { margin-top: 20px; }
+        
+        /* Customization Table Styles */
+        details { margin-top: 15px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #ccc; }
+        summary { font-weight: bold; cursor: pointer; user-select: none; }
+        table { width: 100%; margin-top: 15px; border-collapse: collapse; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #eee; }
+        input[type="number"] { width: 70px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-    <h1>Batch Video Cropper</h1>
+    <h1>Batch Media Cropper</h1>
     
     <div class="card">
-        <label for="videoInput"><strong>Upload High-Quality Video:</strong></label><br><br>
-        <input type="file" id="videoInput" accept="video/mp4,video/x-m4v,video/*">
-        <br>
-        <button id="processBtn">Process Videos</button>
+        <label for="mediaInput"><strong>Upload Video or Image:</strong></label><br><br>
+        <input type="file" id="mediaInput" accept="video/*, image/*">
+        
+        <details>
+            <summary>Advanced: Customize Crop Percentages</summary>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Output</th>
+                        <th>Crop Top (%)</th>
+                        <th>Crop Left (%)</th>
+                        <th>Crop Bottom (%)</th>
+                        <th>Crop Right (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>TV1</strong></td>
+                        <td><input type="number" id="tv1_top" value="0.00" step="0.01"></td>
+                        <td><input type="number" id="tv1_left" value="0.00" step="0.01"></td>
+                        <td><input type="number" id="tv1_bottom" value="0.00" step="0.01"></td>
+                        <td><input type="number" id="tv1_right" value="68.07" step="0.01"></td>
+                    </tr>
+                    <tr>
+                        <td><strong>TV2</strong></td>
+                        <td><input type="number" id="tv2_top" value="14.63" step="0.01"></td>
+                        <td><input type="number" id="tv2_left" value="27.35" step="0.01"></td>
+                        <td><input type="number" id="tv2_bottom" value="44.32" step="0.01"></td>
+                        <td><input type="number" id="tv2_right" value="32.49" step="0.01"></td>
+                    </tr>
+                    <tr>
+                        <td><strong>TV3</strong></td>
+                        <td><input type="number" id="tv3_top" value="0.58" step="0.01"></td>
+                        <td><input type="number" id="tv3_left" value="61.53" step="0.01"></td>
+                        <td><input type="number" id="tv3_bottom" value="70.01" step="0.01"></td>
+                        <td><input type="number" id="tv3_right" value="9.69" step="0.01"></td>
+                    </tr>
+                    <tr>
+                        <td><strong>TV4</strong></td>
+                        <td><input type="number" id="tv4_top" value="33.48" step="0.01"></td>
+                        <td><input type="number" id="tv4_left" value="69.10" step="0.01"></td>
+                        <td><input type="number" id="tv4_bottom" value="0.00" step="0.01"></td>
+                        <td><input type="number" id="tv4_right" value="9.65" step="0.01"></td>
+                    </tr>
+                    <tr>
+                        <td><strong>TV5</strong></td>
+                        <td><input type="number" id="tv5_top" value="57.86" step="0.01"></td>
+                        <td><input type="number" id="tv5_left" value="33.32" step="0.01"></td>
+                        <td><input type="number" id="tv5_bottom" value="4.29" step="0.01"></td>
+                        <td><input type="number" id="tv5_right" value="29.38" step="0.01"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </details>
+
+        <button id="processBtn">Process File</button>
     </div>
 
     <div id="statusArea" style="display: none;">
@@ -39,37 +97,38 @@
 
     <script>
         const { createFFmpeg, fetchFile } = FFmpeg;
-        // Enable logging to see progress
         const ffmpeg = createFFmpeg({ log: true });
 
-        // Extracted crop data from the provided image (in percentages)
-        const cropData = [
-            { name: "TV1", top: 0.00, left: 0.00, bottom: 0.00, right: 68.07 },
-            { name: "TV2", top: 14.63, left: 27.35, bottom: 44.32, right: 32.49 },
-            { name: "TV3", top: 0.58, left: 61.53, bottom: 70.01, right: 9.69 },
-            { name: "TV4", top: 33.48, left: 69.10, bottom: 0.00, right: 9.65 },
-            { name: "TV5", top: 57.86, left: 33.32, bottom: 4.29, right: 29.38 }
-        ];
-
-        const videoInput = document.getElementById('videoInput');
+        const mediaInput = document.getElementById('mediaInput');
         const processBtn = document.getElementById('processBtn');
         const statusArea = document.getElementById('statusArea');
         const statusText = document.getElementById('statusText');
         const logs = document.getElementById('logs');
         const downloadArea = document.getElementById('downloadArea');
 
-        // Capture FFmpeg logs to display in the UI
         ffmpeg.setLogger(({ type, message }) => {
             logs.innerHTML += `<div>[${type}] ${message}</div>`;
             logs.scrollTop = logs.scrollHeight;
         });
 
+        // Helper function to safely get input values
+        const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+
         processBtn.addEventListener('click', async () => {
-            const file = videoInput.files[0];
+            const file = mediaInput.files[0];
             if (!file) {
-                alert("Please select a video file first.");
+                alert("Please select a file first.");
                 return;
             }
+
+            // Dynamically build the crop settings array from the UI inputs
+            const cropData = [
+                { name: "TV1", top: getVal('tv1_top'), left: getVal('tv1_left'), bottom: getVal('tv1_bottom'), right: getVal('tv1_right') },
+                { name: "TV2", top: getVal('tv2_top'), left: getVal('tv2_left'), bottom: getVal('tv2_bottom'), right: getVal('tv2_right') },
+                { name: "TV3", top: getVal('tv3_top'), left: getVal('tv3_left'), bottom: getVal('tv3_bottom'), right: getVal('tv3_right') },
+                { name: "TV4", top: getVal('tv4_top'), left: getVal('tv4_left'), bottom: getVal('tv4_bottom'), right: getVal('tv4_right') },
+                { name: "TV5", top: getVal('tv5_top'), left: getVal('tv5_left'), bottom: getVal('tv5_bottom'), right: getVal('tv5_right') }
+            ];
 
             processBtn.disabled = true;
             statusArea.style.display = 'block';
@@ -82,11 +141,13 @@
                     await ffmpeg.load();
                 }
 
-                // Get original filename without extension
+                // Identify if file is image or video to determine processing logic
+                const isImage = file.type.startsWith('image/');
+                
                 const fileName = file.name;
                 const baseName = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
-                const ext = fileName.substring(fileName.lastIndexOf('.')) || '.mp4';
-                const inputName = 'input_video' + ext;
+                const ext = fileName.substring(fileName.lastIndexOf('.')) || (isImage ? '.jpg' : '.mp4');
+                const inputName = 'input_media' + ext;
 
                 statusText.innerText = "Writing file to browser memory...";
                 ffmpeg.FS('writeFile', inputName, await fetchFile(file));
@@ -97,12 +158,7 @@
                     
                     const outputName = `${baseName}_${tv.name}${ext}`;
 
-                    // Convert percentages to fractional multipliers for FFmpeg logic
-                    // FFmpeg crop filter syntax: crop=w:h:x:y
-                    // w = in_w * (1 - left - right)
-                    // h = in_h * (1 - top - bottom)
-                    // x = in_w * left
-                    // y = in_h * top
+                    // Calculate crop multipliers
                     const w_factor = (1 - (tv.left / 100) - (tv.right / 100)).toFixed(4);
                     const h_factor = (1 - (tv.top / 100) - (tv.bottom / 100)).toFixed(4);
                     const x_factor = (tv.left / 100).toFixed(4);
@@ -110,17 +166,19 @@
 
                     const cropFilter = `crop=in_w*${w_factor}:in_h*${h_factor}:in_w*${x_factor}:in_h*${y_factor}`;
 
-                    // Run the FFmpeg command
-                    // -preset ultrafast is used so it doesn't take hours in the browser
-                    // -c:a copy copies the audio stream without re-encoding to save time
-                    await ffmpeg.run('-i', inputName, '-vf', cropFilter, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22', '-c:a', 'copy', outputName);
+                    // If it's an image, run a standard filter. If video, use video/audio codecs.
+                    if (isImage) {
+                        await ffmpeg.run('-i', inputName, '-vf', cropFilter, outputName);
+                    } else {
+                        await ffmpeg.run('-i', inputName, '-vf', cropFilter, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22', '-c:a', 'copy', outputName);
+                    }
 
-                    // Retrieve the file from memory
                     const data = ffmpeg.FS('readFile', outputName);
                     
-                    // Create a download link
-                    const videoBlob = new Blob([data.buffer], { type: 'video/mp4' });
-                    const downloadUrl = URL.createObjectURL(videoBlob);
+                    // Assign correct MIME type for the download Blob
+                    const mimeType = isImage ? file.type : 'video/mp4';
+                    const blob = new Blob([data.buffer], { type: mimeType });
+                    const downloadUrl = URL.createObjectURL(blob);
                     
                     const a = document.createElement('a');
                     a.href = downloadUrl;
@@ -129,13 +187,10 @@
                     a.innerText = `Download ${outputName}`;
                     downloadArea.appendChild(a);
 
-                    // Free up memory
                     ffmpeg.FS('unlink', outputName);
                 }
 
                 statusText.innerText = "All versions processed successfully!";
-                
-                // Cleanup input file from memory
                 ffmpeg.FS('unlink', inputName);
 
             } catch (error) {
